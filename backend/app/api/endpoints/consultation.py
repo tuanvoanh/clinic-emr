@@ -1,10 +1,15 @@
+import math
+from typing import List
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.api.dependencies import get_db
 from app.core.exceptions import AppException
-from app.schemas.consultation import ConsultationCreate, ConsultationResponse
+from app.schemas.consultation import (
+    ConsultationCreate, 
+    ConsultationResponse, 
+    PaginatedConsultationResponse
+)
 from app.schemas.patient import PatientCreate
 from app.repositories import patient as patient_repo
 from app.repositories import consultation as consultation_repo
@@ -58,15 +63,33 @@ def create_consultation(
         "consultation_id": new_consultation.id
     }
 
-@router.get("/", response_model=List[ConsultationResponse], summary="Get list of consultations", description="""
-Retrieves the history of medical consultations. Supports filtering by patient name or ICD-10 disease code.
-Sorted by the most recent consultation time.
+
+@router.get("/", response_model=PaginatedConsultationResponse, summary="Get paginated list of consultations", description="""
+Retrieves the history of medical consultations with pagination.
+Supports filtering by patient name, phone number, or ICD-10 disease code.
+Sorted strictly by creation time (created_at DESC - newest to oldest).
 """)
 def list_consultations(
-    search: str = Query("", description="Search keyword (patient name, disease code)"),
+    search: str = Query("", description="Search keyword (patient name, phone, or disease code)"),
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint GET /api/consultation
+    Endpoint GET /api/consultation?page=1&page_size=10&search=...
     """
-    return consultation_repo.get_all_consultations(db, search_term=search)
+    items, total = consultation_repo.get_all_consultations(
+        db, 
+        search_term=search, 
+        page=page, 
+        page_size=page_size
+    )
+    total_pages = math.ceil(total / page_size) if total > 0 else 0
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages
+    }

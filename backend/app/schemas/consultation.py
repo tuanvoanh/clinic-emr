@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class ConsultationCreate(BaseModel):
@@ -30,3 +30,14 @@ class ConsultationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PaginatedConsultationResponse(BaseModel):
+    """
+    Schema for paginated consultation list response.
+    """
+    items: List[ConsultationResponse] = Field(description="List of consultations for the current page.")
+    total: int = Field(description="Total number of matching consultation records.")
+    page: int = Field(description="Current page number.")
+    page_size: int = Field(description="Number of items per page.")
+    total_pages: int = Field(description="Total number of pages.")
+

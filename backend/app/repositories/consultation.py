@@ -27,16 +27,27 @@ def create_consultation(db: Session, patient_id: int, consultation_in: Consultat
     db.refresh(db_consultation)
     return db_consultation
 
-def get_all_consultations(db: Session, search_term: str = "") -> List[Dict[str, Any]]:
+from typing import List, Dict, Any, Tuple
+import math
+
+def get_all_consultations(
+    db: Session, 
+    search_term: str = "", 
+    page: int = 1, 
+    page_size: int = 10
+) -> Tuple[List[Dict[str, Any]], int]:
     """
-    Get a list of all consultation records, with optional search by patient name or disease code.
+    Get a paginated list of all consultation records sorted by created_at DESC (newest to oldest),
+    with optional search by patient name, phone, or disease code.
     
     Args:
         db (Session): Database session.
-        search_term (str): Search keyword (Patient name or disease code).
+        search_term (str): Search keyword (Patient name, phone, or disease code).
+        page (int): Page number (1-indexed).
+        page_size (int): Number of items per page.
         
     Returns:
-        List[Dict[str, Any]]: List of consultation records along with detailed information (joined tables).
+        Tuple[List[Dict[str, Any]], int]: (List of consultation records for the page, total matching records).
     """
     query = db.query(
         Consultation.id,
@@ -59,11 +70,15 @@ def get_all_consultations(db: Session, search_term: str = "") -> List[Dict[str, 
             (Consultation.diagnosis_code.ilike(search))
         )
         
-    # Order by newest first
+    # Get total count of matching records before pagination
+    total = query.count()
+    
+    # Order by created_at DESC (newest to oldest)
     query = query.order_by(Consultation.created_at.desc())
     
-    # Execute and format result
-    results = query.all()
+    # Apply offset and limit for pagination
+    offset = (page - 1) * page_size
+    results = query.offset(offset).limit(page_size).all()
     
     # Convert SQLAlchemy Row results to dict format to be compatible with Pydantic response schema
     consultations = []
@@ -80,4 +95,4 @@ def get_all_consultations(db: Session, search_term: str = "") -> List[Dict[str, 
             "created_at": row.created_at
         })
         
-    return consultations
+    return consultations, total
