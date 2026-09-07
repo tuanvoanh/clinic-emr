@@ -1,5 +1,5 @@
 import math
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -66,21 +66,36 @@ def create_consultation(
 
 @router.get("/", response_model=PaginatedConsultationResponse, summary="Get paginated list of consultations", description="""
 Retrieves the history of medical consultations with pagination.
-Supports filtering by patient name, phone number, or ICD-10 disease code.
+Supports dedicated filtering by patient phone number (`phone`), ICD-10 disease code (`diagnosis_code`), or general search keyword (`search`).
 Sorted strictly by creation time (created_at DESC - newest to oldest).
 """)
 def list_consultations(
-    search: str = Query("", description="Search keyword (patient name, phone, or disease code)"),
+    phone: Optional[str] = Query(
+        None, 
+        min_length=6, 
+        max_length=8, 
+        pattern=r"^[89]\d{5,7}$", 
+        description="Filter consultations by Singapore mobile phone number (6 to 8 digits, starts with 8 or 9)"
+    ),
+    diagnosis_code: Optional[str] = Query(
+        None, 
+        min_length=1, 
+        max_length=20, 
+        description="Filter consultations by ICD-10 diagnosis code"
+    ),
+    search: Optional[str] = Query(None, description="General search keyword (patient name, phone, or disease code)"),
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint GET /api/consultation?page=1&page_size=10&search=...
+    Endpoint GET /api/consultation?phone=...&diagnosis_code=...&page=1&page_size=10
     """
     items, total = consultation_repo.get_all_consultations(
         db, 
-        search_term=search, 
+        search_term=search,
+        phone=phone,
+        diagnosis_code=diagnosis_code,
         page=page, 
         page_size=page_size
     )

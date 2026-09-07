@@ -27,22 +27,25 @@ def create_consultation(db: Session, patient_id: int, consultation_in: Consultat
     db.refresh(db_consultation)
     return db_consultation
 
-from typing import List, Dict, Any, Tuple
-import math
+from typing import List, Dict, Any, Tuple, Optional
 
 def get_all_consultations(
     db: Session, 
-    search_term: str = "", 
+    search_term: Optional[str] = None,
+    phone: Optional[str] = None,
+    diagnosis_code: Optional[str] = None,
     page: int = 1, 
     page_size: int = 10
 ) -> Tuple[List[Dict[str, Any]], int]:
     """
     Get a paginated list of all consultation records sorted by created_at DESC (newest to oldest),
-    with optional search by patient name, phone, or disease code.
+    with optional filtering by phone, disease code, or general search.
     
     Args:
         db (Session): Database session.
-        search_term (str): Search keyword (Patient name, phone, or disease code).
+        search_term (Optional[str]): General search keyword.
+        phone (Optional[str]): Patient phone number filter.
+        diagnosis_code (Optional[str]): ICD-10 disease code filter.
         page (int): Page number (1-indexed).
         page_size (int): Number of items per page.
         
@@ -62,8 +65,17 @@ def get_all_consultations(
     ).join(Patient, Consultation.patient_id == Patient.id)\
      .join(ICD10Code, Consultation.diagnosis_code == ICD10Code.code)
 
+    # Specific filter by patient phone (utilizes index with startswith)
+    if phone:
+        query = query.filter(Patient.phone.startswith(phone.strip()))
+
+    # Specific filter by ICD-10 diagnosis code
+    if diagnosis_code:
+        query = query.filter(Consultation.diagnosis_code.ilike(f"{diagnosis_code.strip()}%"))
+
+    # General search across multiple fields
     if search_term:
-        search = f"%{search_term}%"
+        search = f"%{search_term.strip()}%"
         query = query.filter(
             (Patient.full_name.ilike(search)) | 
             (Patient.phone.ilike(search)) |

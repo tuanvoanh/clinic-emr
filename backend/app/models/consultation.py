@@ -12,10 +12,13 @@ class Consultation(Base):
     __tablename__ = "consultations"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
-    diagnosis_code: Mapped[str] = mapped_column(ForeignKey("icd10_codes.code"))
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"), index=True)
+    diagnosis_code: Mapped[str] = mapped_column(ForeignKey("icd10_codes.code"), index=True)
     treatment_notes: Mapped[str] = mapped_column()
-    created_at: Mapped[datetime.datetime] = mapped_column(default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc),
+        index=True
+    )
 
     # Relationships
     patient = relationship("Patient", back_populates="consultations")
