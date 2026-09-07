@@ -9,9 +9,9 @@ from app.repositories import patient as patient_repo
 
 router = APIRouter()
 
-@router.get("/", response_model=List[PatientResponse], summary="Search patients by phone number prefix", description="""
+@router.get("/", response_model=List[PatientResponse], summary="Search patients by phone number prefix (min 6 digits)", description="""
 Search patients by phone prefix using index-friendly startswith (e.g. '812345...').
-Requires at least 6 digits (starting with 8 or 9).
+Requires entering at least 6 digits (Singapore mobile numbers: 6 to 8 digits, starting with 8 or 9).
 Optimized to leverage B-Tree database indexing without full table scans.
 """)
 def search_patients(
@@ -20,7 +20,7 @@ def search_patients(
         min_length=6,
         max_length=8,
         pattern=r"^[89]\d{5,7}$",
-        description="Phone number prefix to search (at least 6 digits, e.g. '812345')"
+        description="Singapore mobile phone number prefix to search (must enter minimum 6 digits, e.g. '812345')"
     ),
     limit: int = Query(20, ge=1, le=100, description="Max results to return"),
     db: Session = Depends(get_db)
