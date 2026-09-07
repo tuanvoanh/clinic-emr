@@ -12,6 +12,10 @@
   "devDependencies": {
     "nuxt": "^3.15.4"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-arm64-musl": "4.63.1",
+    "@rollup/rollup-linux-x64-musl": "4.63.1"
+  },
   "overrides": {
     "tar": ">=7.5.3",
     "diff": ">=8.0.3"
