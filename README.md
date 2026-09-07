@@ -36,6 +36,30 @@ Email: admin@clinic.com
 Password: adminpassword
 ```
 
+## Web Usage Guide
+
+### 1. Sign In
+
+Open http://localhost:3000 and sign in with the demo credentials shown above.
+The login form is prefilled when the application runs in demo mode.
+
+![Clinic EMR login screen](docs/screenshots/login.png)
+
+### 2. Browse And Filter Consultations
+
+The home page displays consultation history with pagination. Use the filters to
+find records by a patient's Singapore mobile number or ICD-10 disease code.
+
+![Patient consultation list and filters](docs/screenshots/consultations.png)
+
+### 3. Record A Consultation
+
+Select **New Consultation**, enter the patient demographics, choose an ICD-10
+diagnosis, and add the clinical notes. Existing patients are matched by their
+unique mobile number.
+
+![New patient consultation form](docs/screenshots/new-consultation.png)
+
 Run the containers in the background:
 
 ```bash
