@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Path
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -32,9 +32,14 @@ def search_patients(
 
 @router.get("/{phone}", response_model=PatientResponse, summary="Get patient by exact phone number", description="""
 Retrieve patient details using their exact unique phone number.
+Enforces strict 8-digit Singapore mobile phone format validation before querying the database.
 """)
 def get_patient_by_phone(
-    phone: str,
+    phone: str = Path(
+        ...,
+        pattern=r"^[89]\d{7}$",
+        description="Exact 8-digit Singapore mobile phone number (starts with 8 or 9)"
+    ),
     db: Session = Depends(get_db)
 ):
     """
