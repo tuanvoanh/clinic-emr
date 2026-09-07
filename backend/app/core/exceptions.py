@@ -14,14 +14,18 @@ class ErrorCode(Enum):
     Single Source of Truth for system and business error codes.
     Tuple format: (code: str, default_message: str, default_status_code: int)
     """
-    # Global framework errors
+    # Global framework & Auth errors
     VALIDATION_ERROR = ("validation_error", "Invalid input data.", 400)
+    UNAUTHORIZED = ("unauthorized", "Could not validate credentials or unauthorized.", 401)
+    FORBIDDEN = ("forbidden", "Not enough permissions.", 403)
+    NOT_FOUND = ("not_found", "Resource not found.", 404)
     HTTP_ERROR = ("http_error", "HTTP request error.", 400)
     INTERNAL_SERVER_ERROR = ("internal_server_error", "Internal server error. Please try again later.", 500)
 
     # Business domain errors
     INVALID_ICD10_CODE = ("invalid_icd10_code", "Invalid ICD-10 code or it does not exist in the system.", 400)
     PATIENT_NOT_FOUND = ("patient_not_found", "Patient not found.", 404)
+    USER_NOT_FOUND = ("user_not_found", "User not found.", 404)
 
     def __init__(self, code: str, message: str, status_code: int = 400):
         self.code = code

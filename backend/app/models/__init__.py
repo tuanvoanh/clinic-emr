@@ -3,3 +3,4 @@ from .base import Base
 from .patient import Patient
 from .diagnosis import ICD10Code
 from .consultation import Consultation
+from .user import User
