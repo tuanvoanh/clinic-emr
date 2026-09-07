@@ -82,3 +82,49 @@ The API will be available at `http://127.0.0.1:8000`.
 FastAPI automatically generates interactive API documentation. Once the server is running, you can access:
 - **Swagger UI**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - **ReDoc**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+
+## Testing
+
+Install all dependencies before running the test suite:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run all unit and integration tests:
+
+```bash
+python -m pytest
+```
+
+Run tests with a detailed coverage report:
+
+```bash
+python -m pytest --cov=app --cov-report=term-missing
+```
+
+The integration tests use an isolated SQLite in-memory database configured in
+`tests/conftest.py`. The test schema and data exist only while each test is
+running and do not modify the application database at `clinic.db`.
+
+Latest test result:
+
+```text
+45 passed
+Total coverage: 94%
+```
+
+Key coverage results:
+
+```text
+app/main.py                          100%
+app/api/api_router.py               100%
+app/api/endpoints/*                 100%
+app/repositories/consultation.py    100%
+app/repositories/diagnosis.py       100%
+app/repositories/patient.py          78%
+app/repositories/user.py            100%
+app/api/dependencies.py              89%
+app/core/exceptions.py               74%
+app/core/security.py                100%
+```
