@@ -40,6 +40,8 @@ Thumbs.db
 
 # Node / Frontend (Future)
 node_modules/
+.nuxt/
+.output/
 dist/
 build/
 .next/

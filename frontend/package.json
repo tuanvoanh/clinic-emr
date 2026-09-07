@@ -1,0 +1,22 @@
+{
+  "name": "clinic-emr-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "devDependencies": {
+    "nuxt": "^3.15.4"
+  },
+  "overrides": {
+    "tar": ">=7.5.3",
+    "diff": ">=8.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
