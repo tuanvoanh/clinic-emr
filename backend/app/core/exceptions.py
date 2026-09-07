@@ -1,7 +1,6 @@
-import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -10,47 +9,69 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger(__name__)
 
-ERROR_MAPPING_FILE = Path(__file__).parent / "error_mapping.json"
+class ErrorCode(Enum):
+    """
+    Single Source of Truth for system and business error codes.
+    Tuple format: (code: str, default_message: str, default_status_code: int)
+    """
+    # Global framework errors
+    VALIDATION_ERROR = ("validation_error", "Invalid input data.", 400)
+    HTTP_ERROR = ("http_error", "HTTP request error.", 400)
+    INTERNAL_SERVER_ERROR = ("internal_server_error", "Internal server error. Please try again later.", 500)
 
-def load_error_mapping() -> Dict[str, Any]:
-    """
-    Loads error mapping rules from error_mapping.json if present.
-    """
-    if ERROR_MAPPING_FILE.exists():
-        try:
-            with open(ERROR_MAPPING_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Failed to load error_mapping.json: {e}")
-    return {}
+    # Business domain errors
+    INVALID_ICD10_CODE = ("invalid_icd10_code", "Invalid ICD-10 code or it does not exist in the system.", 400)
+    PATIENT_NOT_FOUND = ("patient_not_found", "Patient not found.", 404)
 
-ERROR_MAPPING = load_error_mapping()
+    def __init__(self, code: str, message: str, status_code: int = 400):
+        self.code = code
+        self.message = message
+        self.status_code = status_code
 
-def get_error_message(error_code: str) -> Optional[str]:
-    """
-    Looks up the default English message for a given error code in error_mapping.json.
-    """
-    for section in ERROR_MAPPING.values():
-        if isinstance(section, dict) and error_code in section:
-            return section[error_code]
-    return None
+    @classmethod
+    def from_code(cls, code_str: str) -> Optional["ErrorCode"]:
+        """
+        Lookup ErrorCode Enum by its string code value.
+        """
+        for item in cls:
+            if item.code == code_str:
+                return item
+        return None
+
+# User-friendly descriptions for standard Pydantic validation error types
+PYDANTIC_ERROR_MESSAGES: Dict[str, str] = {
+    "missing": "This field is required and cannot be empty.",
+    "string_pattern_mismatch": "Input format is invalid.",
+    "string_too_short": "Input string is too short.",
+    "string_too_long": "Input string exceeds maximum length.",
+    "int_parsing": "Input must be a valid integer.",
+    "float_parsing": "Input must be a valid float number.",
+    "value_error": "Invalid value."
+}
 
 class AppException(Exception):
     """
     Custom application exception for domain/business errors.
-    Automatically retrieves the default description from error_mapping.json if message is omitted.
+    Automatically extracts code, message, and status_code from the ErrorCode Enum.
     """
     def __init__(
         self,
-        error_code: str,
-        status_code: int = 400,
+        error_code: Union[ErrorCode, str],
+        status_code: Optional[int] = None,
         message: Optional[str] = None,
         errors: Optional[List[Dict[str, Any]]] = None
     ):
-        self.error_code = error_code
-        self.status_code = status_code
-        self.message = message or get_error_message(error_code) or error_code
-        self.errors = errors if errors is not None else []
+        if isinstance(error_code, ErrorCode):
+            self.error_code: str = error_code.code
+            self.status_code: int = status_code if status_code is not None else error_code.status_code
+            self.message: str = message if message is not None else error_code.message
+        else:
+            self.error_code: str = str(error_code)
+            matched = ErrorCode.from_code(self.error_code)
+            self.status_code: int = status_code if status_code is not None else (matched.status_code if matched else 400)
+            self.message: str = message if message is not None else (matched.message if matched else self.error_code)
+
+        self.errors: List[Dict[str, Any]] = errors if errors is not None else []
         super().__init__(self.message)
 
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
@@ -70,17 +91,14 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """
-    Handles Pydantic validation errors and formats them cleanly.
+    Handles Pydantic validation errors and formats them into a clean 400 Bad Request response.
     """
     errors = []
-    pydantic_msgs = ERROR_MAPPING.get("pydantic_validation_codes", {})
-    
     for error in exc.errors():
         loc = error.get("loc", [])
         field = ".".join(str(l) for l in loc if l not in ("body", "query", "path"))
         code = error.get("type", "invalid_value")
-        # Use mapped error message if available, otherwise fallback to Pydantic msg
-        msg = pydantic_msgs.get(code, error.get("msg", "Invalid value."))
+        msg = PYDANTIC_ERROR_MESSAGES.get(code, error.get("msg", "Invalid value."))
         
         errors.append({
             "field": field,
@@ -88,14 +106,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "message": msg
         })
         
-    global_msgs = ERROR_MAPPING.get("global_errors", {})
     return JSONResponse(
-        status_code=400,
+        status_code=ErrorCode.VALIDATION_ERROR.status_code,
         content={
             "status": "error",
-            "status_code": 400,
-            "error_code": "validation_error",
-            "message": global_msgs.get("validation_error", "Invalid input data."),
+            "status_code": ErrorCode.VALIDATION_ERROR.status_code,
+            "error_code": ErrorCode.VALIDATION_ERROR.code,
+            "message": ErrorCode.VALIDATION_ERROR.message,
             "errors": errors
         }
     )
@@ -103,17 +120,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """
     Handles standard HTTP exceptions (e.g. 404, 403, 400 manually raised).
-    If exc.detail matches a registered error code, maps it accordingly.
+    If exc.detail matches a registered ErrorCode, maps it accordingly.
     """
-    detail = exc.detail if exc.detail else ""
-    mapped_msg = get_error_message(detail)
+    detail = str(exc.detail) if exc.detail else ""
+    matched = ErrorCode.from_code(detail)
     
-    if mapped_msg is not None:
-        error_code = detail
-        message = mapped_msg
+    if matched is not None:
+        error_code = matched.code
+        message = matched.message
     else:
-        error_code = "http_error"
-        message = detail or "HTTP request error."
+        error_code = ErrorCode.HTTP_ERROR.code
+        message = detail or ErrorCode.HTTP_ERROR.message
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -131,14 +148,13 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     Catches all unhandled 500 server errors to prevent stack trace leaks.
     """
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    global_msgs = ERROR_MAPPING.get("global_errors", {})
     return JSONResponse(
-        status_code=500,
+        status_code=ErrorCode.INTERNAL_SERVER_ERROR.status_code,
         content={
             "status": "error",
-            "status_code": 500,
-            "error_code": "internal_server_error",
-            "message": global_msgs.get("internal_server_error", "Internal server error. Please try again later."),
+            "status_code": ErrorCode.INTERNAL_SERVER_ERROR.status_code,
+            "error_code": ErrorCode.INTERNAL_SERVER_ERROR.code,
+            "message": ErrorCode.INTERNAL_SERVER_ERROR.message,
             "errors": []
         }
     )
@@ -148,4 +164,5 @@ def setup_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(Exception, global_exception_handler)
+
 

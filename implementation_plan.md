@@ -15,8 +15,7 @@ backend/
 │   ├── core/
 │   │   ├── config.py           # Quản lý cấu hình & biến môi trường (Pydantic BaseSettings)
 │   │   ├── database.py         # SQLAlchemy engine & SessionLocal factory
-│   │   ├── error_mapping.json  # File JSON quản lý mã lỗi tập trung (Error Codes & Descriptions)
-│   │   └── exceptions.py       # Custom AppException, Global Exception Handlers (400, 404, 422 -> 400, 500)
+│   │   └── exceptions.py       # ErrorCode Enum (Single Source of Truth), AppException, Global Exception Handlers
 │   ├── models/                 # SQLAlchemy 2.0 Models (Mapped & mapped_column)
 │   │   ├── base.py             # Declarative Base
 │   │   ├── patient.py          # Patient model (Unique B-Tree Index trên phone)
@@ -83,9 +82,20 @@ Hệ thống được thiết kế để tối ưu hóa hiệu năng truy vấn,
 
 ## 4. Chuẩn hóa Xử lý Lỗi (Enterprise Error Handling)
 
-Hệ thống sử dụng file tập trung [error_mapping.json](file:///Users/tuananh/Documents/clinic-emr/backend/app/core/error_mapping.json) và middleware [exceptions.py](file:///Users/tuananh/Documents/clinic-emr/backend/app/core/exceptions.py).
+Hệ thống sử dụng **`ErrorCode` Enum** làm **Single Source of Truth** duy nhất trong [exceptions.py](file:///Users/tuananh/Documents/clinic-emr/backend/app/core/exceptions.py), loại bỏ hoàn toàn việc phân mảnh cấu hình sang file JSON.
 
-### Cấu trúc Response lỗi chuẩn:
+### 4.1. Cấu trúc `ErrorCode` Enum:
+Mỗi mã lỗi trong Enum tự động gắn liền với: `(code, default_message, default_status_code)`:
+```python
+class ErrorCode(Enum):
+    VALIDATION_ERROR = ("validation_error", "Invalid input data.", 400)
+    HTTP_ERROR = ("http_error", "HTTP request error.", 400)
+    INTERNAL_SERVER_ERROR = ("internal_server_error", "Internal server error. Please try again later.", 500)
+    INVALID_ICD10_CODE = ("invalid_icd10_code", "Invalid ICD-10 code or it does not exist in the system.", 400)
+    PATIENT_NOT_FOUND = ("patient_not_found", "Patient not found.", 404)
+```
+
+### 4.2. Cấu trúc Response lỗi chuẩn:
 Mọi lỗi (Validation, Business, HTTP, Internal Error) đều trả về format thống nhất:
 ```json
 {
@@ -97,8 +107,8 @@ Mọi lỗi (Validation, Business, HTTP, Internal Error) đều trả về forma
 }
 ```
 
-* **Lỗi Validation Pydantic:** Trả về mã HTTP `400` (thay vì 422 mặc định) với chi tiết từng trường bị lỗi trong mảng `errors`.
-* **Lỗi Nghiệp vụ:** Sử dụng `AppException(error_code="...", status_code=400/404)`.
+* **Lỗi Validation Pydantic:** Trả về mã HTTP `400` với chi tiết từng trường bị lỗi trong mảng `errors`.
+* **Lỗi Nghiệp vụ:** `raise AppException(ErrorCode.INVALID_ICD10_CODE)` $\rightarrow$ Tự động có autocomplete, type safety, không lo gõ sai chính tả.
 * **Lỗi Hệ thống (500):** Bắt qua `global_exception_handler`, ghi log chi tiết và ẩn stack trace nhạy cảm với client.
 
 ---

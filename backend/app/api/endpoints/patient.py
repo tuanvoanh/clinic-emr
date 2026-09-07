@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.api.dependencies import get_db
-from app.core.exceptions import AppException
+from app.core.exceptions import AppException, ErrorCode
 from app.schemas.patient import PatientResponse
 from app.repositories import patient as patient_repo
 
@@ -47,5 +47,5 @@ def get_patient_by_phone(
     """
     patient = patient_repo.get_patient_by_phone(db, phone=phone)
     if not patient:
-        raise AppException(error_code="patient_not_found", status_code=404)
+        raise AppException(error_code=ErrorCode.PATIENT_NOT_FOUND, status_code=404)
     return patient

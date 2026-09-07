@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
-from app.core.exceptions import AppException
+from app.core.exceptions import AppException, ErrorCode
 from app.schemas.consultation import (
     ConsultationCreate, 
     ConsultationResponse, 
@@ -35,7 +35,7 @@ def create_consultation(
     # 1. Validate ICD-10 code
     db_code = db.query(ICD10Code).filter(ICD10Code.code == consultation_in.diagnosis_code).first()
     if not db_code:
-        raise AppException(error_code="invalid_icd10_code", status_code=400)
+        raise AppException(error_code=ErrorCode.INVALID_ICD10_CODE, status_code=400)
 
     # 2. Process patient information by unique phone number
     patient = patient_repo.get_patient_by_phone(
