@@ -5,20 +5,22 @@ from app.models.diagnosis import ICD10Code
 from app.schemas.consultation import ConsultationCreate
 from typing import List, Dict, Any
 
-def create_consultation(db: Session, patient_id: int, consultation_in: ConsultationCreate) -> Consultation:
+def create_consultation(
+    db: Session, patient: Patient, consultation_in: ConsultationCreate
+) -> Consultation:
     """
     Create a new consultation record.
     
     Args:
         db (Session): Database session.
-        patient_id (int): ID of the patient.
+        patient (Patient): Patient linked to the consultation.
         consultation_in (ConsultationCreate): Consultation details (disease code, notes, etc.).
         
     Returns:
         Consultation: The newly created Consultation object.
     """
     db_consultation = Consultation(
-        patient_id=patient_id,
+        patient=patient,
         diagnosis_code=consultation_in.diagnosis_code,
         treatment_notes=consultation_in.treatment_notes
     )

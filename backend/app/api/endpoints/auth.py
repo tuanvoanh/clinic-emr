@@ -1,4 +1,6 @@
 from datetime import timedelta
+from typing import cast
+
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -21,7 +23,9 @@ def login_access_token(
     OAuth2 compatible token login, get an access token for future requests.
     """
     user = user_repo.get_by_email(db, email=form_data.username)
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user or not verify_password(
+        form_data.password, cast(str, user.hashed_password)
+    ):
         raise AppException(
             error_code=ErrorCode.UNAUTHORIZED,
             status_code=400,

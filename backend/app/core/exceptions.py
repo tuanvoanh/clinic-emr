@@ -70,7 +70,7 @@ class AppException(Exception):
             self.status_code: int = status_code if status_code is not None else error_code.status_code
             self.message: str = message if message is not None else error_code.message
         else:
-            self.error_code: str = str(error_code)
+            self.error_code: str = error_code
             matched = ErrorCode.from_code(self.error_code)
             self.status_code: int = status_code if status_code is not None else (matched.status_code if matched else 400)
             self.message: str = message if message is not None else (matched.message if matched else self.error_code)
@@ -78,10 +78,11 @@ class AppException(Exception):
         self.errors: List[Dict[str, Any]] = errors if errors is not None else []
         super().__init__(self.message)
 
-async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+async def app_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Handles custom application / business exceptions.
     """
+    assert isinstance(exc, AppException)
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -93,10 +94,11 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
         }
     )
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Handles Pydantic validation errors and formats them into a clean 400 Bad Request response.
     """
+    assert isinstance(exc, RequestValidationError)
     errors = []
     for error in exc.errors():
         loc = error.get("loc", [])
@@ -121,12 +123,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         }
     )
 
-async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Handles standard HTTP exceptions (e.g. 404, 403, 400 manually raised).
     If exc.detail matches a registered ErrorCode, maps it accordingly.
     """
-    detail = str(exc.detail) if exc.detail else ""
+    assert isinstance(exc, StarletteHTTPException)
+    detail = exc.detail if exc.detail else ""
     matched = ErrorCode.from_code(detail)
     
     if matched is not None:
@@ -168,5 +171,4 @@ def setup_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(Exception, global_exception_handler)
-
 

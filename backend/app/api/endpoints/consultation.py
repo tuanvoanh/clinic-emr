@@ -54,7 +54,7 @@ def create_consultation(
     # 3. Create consultation record
     new_consultation = consultation_repo.create_consultation(
         db,
-        patient_id=patient.id,
+        patient=patient,
         consultation_in=consultation_in
     )
     
