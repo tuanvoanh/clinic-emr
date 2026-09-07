@@ -9,7 +9,7 @@ class ConsultationCreate(BaseModel):
     """
     patient_name: str = Field(min_length=2, max_length=150, description="Full name of the patient.", json_schema_extra={"example": "Jane Smith"})
     dob: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$", description="Date of birth of the patient (YYYY-MM-DD).", json_schema_extra={"example": "1985-05-15"})
-    phone: str = Field(pattern=r"^\+[1-9]\d{7,14}$", description="Patient's phone number in E.164 international format (8-15 digits total). Unique identifier for patients.", json_schema_extra={"example": "+84988123456"})
+    phone: str = Field(pattern=r"^\d{8,15}$", description="Patient's phone number containing only digits (8-15 digits, without country code). Unique identifier for patients.", json_schema_extra={"example": "81234567"})
     
     diagnosis_code: str = Field(min_length=1, max_length=20, description="ICD-10 diagnosis code.", json_schema_extra={"example": "R51.9"})
     treatment_notes: str = Field(min_length=5, description="Treatment notes, symptoms, and doctor's instructions.", json_schema_extra={"example": "Patient has a tension headache, prescribed mild pain relievers and rest."})

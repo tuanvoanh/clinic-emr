@@ -1,7 +1,27 @@
 from sqlalchemy.orm import Session
 from app.models.patient import Patient
 from app.schemas.patient import PatientCreate
-from typing import Optional
+from typing import Optional, List
+
+def search_patients_by_phone(db: Session, phone_prefix: str, limit: int = 20) -> List[Patient]:
+    """
+    Search patients by phone prefix using startswith (generates 'phone LIKE prefix%').
+    This effectively uses the B-Tree index on the phone column without full table scans.
+    
+    Args:
+        db (Session): Database session.
+        phone_prefix (str): Beginning digits of the phone number.
+        limit (int): Maximum records to return.
+        
+    Returns:
+        List[Patient]: Matching patient records.
+    """
+    if not phone_prefix:
+        return db.query(Patient).limit(limit).all()
+        
+    return db.query(Patient).filter(
+        Patient.phone.startswith(phone_prefix)
+    ).limit(limit).all()
 
 def get_patient_by_phone(db: Session, phone: str) -> Optional[Patient]:
     """
