@@ -1,0 +1,72 @@
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from typing import List
+
+from app.api.dependencies import get_db
+from app.core.exceptions import AppException
+from app.schemas.consultation import ConsultationCreate, ConsultationResponse
+from app.schemas.patient import PatientCreate
+from app.repositories import patient as patient_repo
+from app.repositories import consultation as consultation_repo
+from app.repositories import diagnosis as diagnosis_repo
+from app.models.diagnosis import ICD10Code
+
+router = APIRouter()
+
+@router.post("/", response_model=dict, summary="Create a new consultation record", description="""
+Receives patient information and consultation details.
+The system will check if the patient already exists based on Phone Number (unique identifier).
+- If not: Automatically creates a new patient record.
+- If yes: Reuses the ID of that existing patient.
+Then creates and stores the consultation record.
+""")
+def create_consultation(
+    consultation_in: ConsultationCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint POST /api/consultation
+    """
+    # 1. Validate ICD-10 code
+    db_code = db.query(ICD10Code).filter(ICD10Code.code == consultation_in.diagnosis_code).first()
+    if not db_code:
+        raise AppException(error_code="invalid_icd10_code", status_code=400)
+
+    # 2. Process patient information by unique phone number
+    patient = patient_repo.get_patient_by_phone(
+        db, 
+        phone=consultation_in.phone
+    )
+    
+    if not patient:
+        patient_create = PatientCreate(
+            full_name=consultation_in.patient_name,
+            dob=consultation_in.dob,
+            phone=consultation_in.phone
+        )
+        patient = patient_repo.create_patient(db, patient_in=patient_create)
+        
+    # 3. Create consultation record
+    new_consultation = consultation_repo.create_consultation(
+        db,
+        patient_id=patient.id,
+        consultation_in=consultation_in
+    )
+    
+    return {
+        "message": "Consultation record created successfully",
+        "consultation_id": new_consultation.id
+    }
+
+@router.get("/", response_model=List[ConsultationResponse], summary="Get list of consultations", description="""
+Retrieves the history of medical consultations. Supports filtering by patient name or ICD-10 disease code.
+Sorted by the most recent consultation time.
+""")
+def list_consultations(
+    search: str = Query("", description="Search keyword (patient name, disease code)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint GET /api/consultation
+    """
+    return consultation_repo.get_all_consultations(db, search_term=search)
