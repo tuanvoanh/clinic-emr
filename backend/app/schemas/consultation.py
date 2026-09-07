@@ -1,5 +1,4 @@
-import re
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -14,18 +13,6 @@ class ConsultationCreate(BaseModel):
     
     diagnosis_code: str = Field(min_length=1, max_length=20, description="ICD-10 diagnosis code.", json_schema_extra={"example": "R51.9"})
     treatment_notes: str = Field(min_length=5, description="Treatment notes, symptoms, and doctor's instructions.", json_schema_extra={"example": "Patient has a tension headache, prescribed mild pain relievers and rest."})
-
-    @field_validator("phone", mode="before")
-    @classmethod
-    def sanitize_phone(cls, v: str) -> str:
-        if isinstance(v, str):
-            cleaned = re.sub(r"[\s\-\.]", "", v)
-            if cleaned.startswith("+65"):
-                cleaned = cleaned[3:]
-            elif cleaned.startswith("65") and len(cleaned) == 10:
-                cleaned = cleaned[2:]
-            return cleaned
-        return v
 
 class ConsultationResponse(BaseModel):
     """
