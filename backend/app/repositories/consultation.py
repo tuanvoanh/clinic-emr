@@ -65,22 +65,13 @@ def get_all_consultations(
     ).join(Patient, Consultation.patient_id == Patient.id)\
      .join(ICD10Code, Consultation.diagnosis_code == ICD10Code.code)
 
-    # Specific filter by patient phone (utilizes index with startswith)
+    # Exact filter by patient phone (uses unique index)
     if phone:
-        query = query.filter(Patient.phone.startswith(phone.strip()))
+        query = query.filter(Patient.phone == phone.strip())
 
-    # Specific filter by ICD-10 diagnosis code
+    # Exact filter by ICD-10 diagnosis code (uses index)
     if diagnosis_code:
-        query = query.filter(Consultation.diagnosis_code.ilike(f"{diagnosis_code.strip()}%"))
-
-    # General search across multiple fields
-    if search_term:
-        search = f"%{search_term.strip()}%"
-        query = query.filter(
-            (Patient.full_name.ilike(search)) | 
-            (Patient.phone.ilike(search)) |
-            (Consultation.diagnosis_code.ilike(search))
-        )
+        query = query.filter(Consultation.diagnosis_code == diagnosis_code.strip())
         
     # Get total count of matching records before pagination
     total = query.count()
