@@ -81,11 +81,13 @@
         </p>
       </div>
 
-      <!-- Filter by Diagnosis Code -->
-      <div class="sm:col-span-5">
-        <label class="block text-xs font-bold text-slate-600 mb-1.5">
-          ICD-10 Disease Code
-        </label>
+      <!-- Filter by Diagnosis Code with Live Suggestions -->
+      <div class="sm:col-span-5 relative">
+        <div class="flex items-center justify-between mb-1.5 h-4">
+          <label class="block text-xs font-bold text-slate-600">
+            ICD-10 Disease Code
+          </label>
+        </div>
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -94,37 +96,70 @@
           </div>
           <input
             :value="diagnosisCode"
-            @input="$emit('update:diagnosisCode', ($event.target as HTMLInputElement).value)"
+            @input="onDiagnosisInput(($event.target as HTMLInputElement).value)"
             type="text"
-            placeholder="e.g. A00.0, R51.9"
+            placeholder="Type code or disease (e.g. A00.0, Headache)..."
+            @focus="showDiagnosisDropdown = true"
             @keyup.enter="handleSearch"
-            class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition bg-slate-50/50 focus:bg-white"
+            class="w-full pl-10 pr-9 py-2.5 text-sm rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition bg-slate-50/50 focus:bg-white"
           />
+          <div v-if="isSearchingDiagnoses" class="absolute right-3 top-3 text-teal-600">
+            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- ICD-10 Search Results Dropdown -->
+        <div
+          v-if="showDiagnosisDropdown && diagnosisSuggestions.length > 0"
+          class="absolute z-30 mt-1.5 w-full bg-white rounded-2xl border border-slate-200 shadow-xl divide-y divide-slate-100 max-h-60 overflow-y-auto"
+        >
+          <div
+            v-for="diag in diagnosisSuggestions"
+            :key="diag.code"
+            @mousedown="onSelectDiagnosis(diag)"
+            class="p-3 hover:bg-teal-50/60 cursor-pointer flex items-center justify-between transition-colors group"
+          >
+            <div class="flex items-center gap-2.5">
+              <span class="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200/80">
+                {{ diag.code }}
+              </span>
+              <span class="text-xs font-semibold text-slate-800 group-hover:text-teal-700 transition">
+                {{ diag.description }}
+              </span>
+            </div>
+            <span class="text-[11px] font-bold text-teal-600 opacity-0 group-hover:opacity-100 transition">Select &rarr;</span>
+          </div>
         </div>
       </div>
 
       <!-- Action Buttons -->
-      <div class="sm:col-span-2 flex items-end gap-2">
-        <button
-          @click="handleSearch"
-          class="flex-1 py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition shadow-xs cursor-pointer"
-        >
-          Filter
-        </button>
-        <button
-          @click="handleReset"
-          class="py-2.5 px-3 border border-slate-200 hover:bg-slate-100 text-slate-600 text-sm font-semibold rounded-xl transition cursor-pointer"
-          title="Reset filters"
-        >
-          Reset
-        </button>
+      <div class="sm:col-span-2 flex flex-col justify-end">
+        <div class="mb-1.5 h-4 hidden sm:block"></div>
+        <div class="flex items-center gap-2">
+          <button
+            @click="handleSearch"
+            class="flex-1 h-[42px] px-4 bg-slate-900 hover:bg-slate-800 active:bg-black text-white text-sm font-bold rounded-xl transition shadow-xs cursor-pointer inline-flex items-center justify-center border border-slate-900"
+          >
+            Filter
+          </button>
+          <button
+            @click="handleReset"
+            class="h-[42px] px-3.5 border border-slate-200 hover:bg-slate-100 active:bg-slate-200 text-slate-600 text-sm font-semibold rounded-xl transition cursor-pointer inline-flex items-center justify-center bg-white"
+            title="Reset filters"
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Patient } from '~/types';
+import type { Patient, DiagnosisCode } from '~/types';
 
 const props = defineProps<{
   phone: string;
@@ -145,9 +180,14 @@ const patientSuggestions = ref<Patient[]>([]);
 const isSearchingPatients = ref(false);
 const showPatientDropdown = ref(false);
 
+const diagnosisSuggestions = ref<DiagnosisCode[]>([]);
+const isSearchingDiagnoses = ref(false);
+const showDiagnosisDropdown = ref(false);
+
 const hasActiveFilters = computed(() => !!props.phone.trim() || !!props.diagnosisCode.trim());
 
-let patientSearchTimer: NodeJS.Timeout | null = null;
+let patientSearchTimer: ReturnType<typeof setTimeout> | null = null;
+let diagnosisSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const onPhoneInput = (val: string) => {
   emit('update:phone', val);
@@ -188,6 +228,42 @@ const onSelectPatient = (patient: Patient) => {
   emit('search');
 };
 
+const onDiagnosisInput = (val: string) => {
+  emit('update:diagnosisCode', val);
+  const trimmed = val.trim();
+
+  if (diagnosisSearchTimer) clearTimeout(diagnosisSearchTimer);
+
+  if (!trimmed) {
+    diagnosisSuggestions.value = [];
+    isSearchingDiagnoses.value = false;
+    return;
+  }
+
+  isSearchingDiagnoses.value = true;
+  diagnosisSearchTimer = setTimeout(async () => {
+    try {
+      const res = await api.get<DiagnosisCode[]>('/api/diagnosis/', {
+        search: trimmed,
+      });
+      diagnosisSuggestions.value = res || [];
+      showDiagnosisDropdown.value = (res && res.length > 0);
+    } catch (err) {
+      console.error('Diagnosis search error:', err);
+      diagnosisSuggestions.value = [];
+    } finally {
+      isSearchingDiagnoses.value = false;
+    }
+  }, 250);
+};
+
+const onSelectDiagnosis = (diag: DiagnosisCode) => {
+  emit('update:diagnosisCode', diag.code);
+  showDiagnosisDropdown.value = false;
+  diagnosisSuggestions.value = [];
+  emit('search');
+};
+
 const validatePhone = (phone: string): boolean => {
   if (!phone) return true;
   return /^[89]\d{7}$/.test(phone);
@@ -203,13 +279,16 @@ const handleSearch = () => {
   }
 
   showPatientDropdown.value = false;
+  showDiagnosisDropdown.value = false;
   emit('search');
 };
 
 const handleReset = () => {
   phoneError.value = '';
   patientSuggestions.value = [];
+  diagnosisSuggestions.value = [];
   showPatientDropdown.value = false;
+  showDiagnosisDropdown.value = false;
   emit('update:phone', '');
   emit('update:diagnosisCode', '');
   emit('reset');

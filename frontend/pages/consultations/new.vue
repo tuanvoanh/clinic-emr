@@ -37,76 +37,12 @@
 
     <!-- Form Container -->
     <form @submit.prevent="handleSubmit" class="space-y-6">
-      <!-- Section 1: Patient Information -->
-      <div class="bg-white rounded-3xl border border-slate-200/70 p-6 sm:p-8 shadow-xs space-y-6">
-        <div class="flex items-center gap-3 pb-4 border-b border-slate-100">
-          <div class="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center font-extrabold text-sm">
-            01
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">Patient Demographics</h2>
-            <p class="text-xs text-slate-400">Identification and contact information</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <!-- Patient Name -->
-          <div class="sm:col-span-2">
-            <label for="patient_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Full Legal Name <span class="text-rose-500">*</span>
-            </label>
-            <input
-              id="patient_name"
-              v-model="form.patient_name"
-              type="text"
-              required
-              minlength="2"
-              maxlength="150"
-              placeholder="e.g. Jane Smith"
-              class="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition bg-slate-50/50 focus:bg-white font-medium text-slate-800"
-            />
-          </div>
-
-          <!-- Date of Birth -->
-          <div>
-            <label for="dob" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Date of Birth <span class="text-rose-500">*</span>
-            </label>
-            <input
-              id="dob"
-              v-model="form.dob"
-              type="date"
-              required
-              :max="todayDate"
-              class="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition bg-slate-50/50 focus:bg-white font-medium text-slate-800"
-            />
-            <p class="text-[11px] text-slate-400 mt-1.5 font-medium">Standard format: YYYY-MM-DD</p>
-          </div>
-
-          <!-- Phone Number (Singapore) -->
-          <div>
-            <label for="phone" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Singapore Mobile Number <span class="text-rose-500">*</span>
-            </label>
-            <div class="relative">
-              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-teal-700 bg-teal-50/80 my-1 ml-1 px-2 rounded-lg border border-teal-100">
-                +65
-              </span>
-              <input
-                id="phone"
-                v-model="form.phone"
-                type="tel"
-                required
-                pattern="^[89]\d{7}$"
-                maxlength="8"
-                placeholder="81234567"
-                class="w-full pl-16 pr-4 py-3 text-sm rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition bg-slate-50/50 focus:bg-white font-mono font-medium text-slate-800"
-              />
-            </div>
-            <p class="text-[11px] text-slate-400 mt-1.5 font-medium">Unique patient key: 8 digits starting with 8 or 9</p>
-          </div>
-        </div>
-      </div>
+      <!-- Section 1: Patient Demographics Component -->
+      <PatientDemographicsForm
+        v-model:phone="form.phone"
+        v-model:dob="form.dob"
+        v-model:patient-name="form.patient_name"
+      />
 
       <!-- Section 2: Clinical Details -->
       <div class="bg-white rounded-3xl border border-slate-200/70 p-6 sm:p-8 shadow-xs space-y-6">
@@ -173,14 +109,11 @@
 
 <script setup lang="ts">
 import type { DiagnosisCode } from '~/types';
+import PatientDemographicsForm from '~/components/consultation/PatientDemographicsForm.vue';
 import DiagnosisSelect from '~/components/consultation/DiagnosisSelect.vue';
 
 const api = useApi();
 const router = useRouter();
-
-const todayDate = computed(() => {
-  return new Date().toISOString().split('T')[0];
-});
 
 const form = reactive({
   patient_name: '',

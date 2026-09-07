@@ -36,10 +36,12 @@
           </svg>
         </div>
         <input
-          v-model="query"
+          :value="query"
+          @input="onInput(($event.target as HTMLInputElement).value)"
           type="text"
-          placeholder="Search by code or keyword (e.g. Headache, Fever, A00.0)..."
-          @focus="isOpen = true"
+          placeholder="Type to search ICD-10 (e.g. Headache, Fever, A00.0)..."
+          @focus="handleFocus"
+          @keydown.enter.prevent="handleEnter"
           class="w-full pl-10 pr-10 py-3 text-sm rounded-xl border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition bg-slate-50/50 focus:bg-white font-medium"
         />
         <div v-if="isLoading" class="absolute right-3.5 top-3.5 text-teal-600">
@@ -98,29 +100,52 @@ const results = ref<DiagnosisCode[]>([]);
 const isOpen = ref(false);
 const isLoading = ref(false);
 
-let searchTimeout: NodeJS.Timeout | null = null;
-watch(query, (newVal) => {
-  if (searchTimeout) clearTimeout(searchTimeout);
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  if (!newVal.trim()) {
+const fetchDiagnoses = async (term: string) => {
+  isLoading.value = true;
+  try {
+    const res = await api.get<DiagnosisCode[]>('/api/diagnosis/', {
+      search: term.trim(),
+    });
+    results.value = res || [];
+    isOpen.value = true;
+  } catch (err) {
+    console.error('Diagnosis search error:', err);
     results.value = [];
-    return;
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const onInput = (val: string) => {
+  query.value = val;
+  isOpen.value = true;
+  
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
   }
 
   isLoading.value = true;
-  searchTimeout = setTimeout(async () => {
-    try {
-      const res = await api.get<DiagnosisCode[]>('/api/diagnosis/', {
-        search: newVal.trim(),
-      });
-      results.value = res || [];
-    } catch (err) {
-      console.error('Diagnosis search error:', err);
-    } finally {
-      isLoading.value = false;
-    }
-  }, 300);
-});
+  searchTimeout = setTimeout(() => {
+    fetchDiagnoses(val);
+  }, 250);
+};
+
+const handleEnter = (e: Event) => {
+  e.preventDefault();
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  fetchDiagnoses(query.value);
+};
+
+const handleFocus = () => {
+  isOpen.value = true;
+  if (results.value.length === 0) {
+    fetchDiagnoses(query.value);
+  }
+};
 
 const selectItem = (item: DiagnosisCode) => {
   emit('update:modelValue', item);
