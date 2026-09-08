@@ -1,11 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+body {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-@layer base {
-  body {
-    @apply bg-slate-50 text-slate-900 antialiased font-sans min-h-screen selection:bg-brand-500 selection:text-white;
-  }
+::selection {
+  background: #10b981;
+  color: #ffffff;
 }
 
 /* Smooth custom scrollbars */
