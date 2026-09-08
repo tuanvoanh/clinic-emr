@@ -47,7 +47,7 @@ def test_create_consultation_reuses_existing_patient(monkeypatch, consultation_i
     }
     create_patient.assert_not_called()
     create_consultation.assert_called_once_with(
-        db, patient=existing_patient, consultation_in=consultation_in
+        db, patient=existing_patient, consultation_in=consultation_in, commit=False
     )
 
 

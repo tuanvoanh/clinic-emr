@@ -53,13 +53,16 @@ def get_patient_by_details(db: Session, full_name: str, dob: str) -> Optional[Pa
         Patient.dob == dob
     ).first()
 
-def create_patient(db: Session, patient_in: PatientCreate) -> Patient:
+def create_patient(
+    db: Session, patient_in: PatientCreate, commit: bool = True
+) -> Patient:
     """
     Create a new patient record.
     
     Args:
         db (Session): Database session.
         patient_in (PatientCreate): Schema containing patient information to create.
+        commit (bool): Whether to commit the transaction immediately (default True).
         
     Returns:
         Patient: The newly created Patient object.
@@ -70,6 +73,9 @@ def create_patient(db: Session, patient_in: PatientCreate) -> Patient:
         phone=patient_in.phone
     )
     db.add(db_patient)
-    db.commit()
-    db.refresh(db_patient)
+    if commit:
+        db.commit()
+        db.refresh(db_patient)
+    else:
+        db.flush()
     return db_patient

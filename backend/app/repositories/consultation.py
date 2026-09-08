@@ -6,7 +6,10 @@ from app.schemas.consultation import ConsultationCreate
 from typing import List, Dict, Any
 
 def create_consultation(
-    db: Session, patient: Patient, consultation_in: ConsultationCreate
+    db: Session,
+    patient: Patient,
+    consultation_in: ConsultationCreate,
+    commit: bool = True,
 ) -> Consultation:
     """
     Create a new consultation record.
@@ -15,6 +18,7 @@ def create_consultation(
         db (Session): Database session.
         patient (Patient): Patient linked to the consultation.
         consultation_in (ConsultationCreate): Consultation details (disease code, notes, etc.).
+        commit (bool): Whether to commit the transaction immediately (default True).
         
     Returns:
         Consultation: The newly created Consultation object.
@@ -25,8 +29,11 @@ def create_consultation(
         treatment_notes=consultation_in.treatment_notes
     )
     db.add(db_consultation)
-    db.commit()
-    db.refresh(db_consultation)
+    if commit:
+        db.commit()
+        db.refresh(db_consultation)
+    else:
+        db.flush()
     return db_consultation
 
 from typing import List, Dict, Any, Tuple, Optional

@@ -22,9 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.models.base import Base
 # Import all models to ensure they are registered with Base.metadata
-import app.models.patient
-import app.models.diagnosis
-import app.models.consultation
+import app.models  # registers Patient, ICD10Code, Consultation, User
 
 target_metadata = Base.metadata
 

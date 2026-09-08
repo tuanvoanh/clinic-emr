@@ -1,6 +1,7 @@
 import math
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
@@ -23,7 +24,7 @@ Receives patient information and consultation details.
 The system will check if the patient already exists based on Phone Number (unique identifier).
 - If not: Automatically creates a new patient record.
 - If yes: Reuses the ID of that existing patient.
-Then creates and stores the consultation record.
+Then creates and stores the consultation record atomically.
 """)
 def create_consultation(
     consultation_in: ConsultationCreate,
@@ -37,27 +38,57 @@ def create_consultation(
     if not db_code:
         raise AppException(error_code=ErrorCode.INVALID_ICD10_CODE, status_code=400)
 
-    # 2. Process patient information by unique phone number
+    # 2 & 3. Process patient information and create consultation atomically
     patient = patient_repo.get_patient_by_phone(
         db, 
         phone=consultation_in.phone
     )
     
-    if not patient:
-        patient_create = PatientCreate(
-            full_name=consultation_in.patient_name,
-            dob=consultation_in.dob,
-            phone=consultation_in.phone
+    try:
+        if not patient:
+            patient_create = PatientCreate(
+                full_name=consultation_in.patient_name,
+                dob=consultation_in.dob,
+                phone=consultation_in.phone
+            )
+            patient = patient_repo.create_patient(db, patient_in=patient_create, commit=False)
+            
+        new_consultation = consultation_repo.create_consultation(
+            db,
+            patient=patient,
+            consultation_in=consultation_in,
+            commit=False
         )
-        patient = patient_repo.create_patient(db, patient_in=patient_create)
-        
-    # 3. Create consultation record
-    new_consultation = consultation_repo.create_consultation(
-        db,
-        patient=patient,
-        consultation_in=consultation_in
-    )
-    
+        db.commit()
+        db.refresh(new_consultation)
+    except IntegrityError:
+        db.rollback()
+        # Handle race condition: patient was concurrently created by another request
+        patient = patient_repo.get_patient_by_phone(db, phone=consultation_in.phone)
+        if not patient:
+            raise AppException(
+                error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+                status_code=500,
+                message="Failed to create consultation record due to concurrent conflict."
+            )
+        try:
+            new_consultation = consultation_repo.create_consultation(
+                db,
+                patient=patient,
+                consultation_in=consultation_in,
+                commit=True
+            )
+        except Exception:
+            db.rollback()
+            raise AppException(
+                error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+                status_code=500,
+                message="Failed to complete consultation record creation."
+            )
+    except Exception:
+        db.rollback()
+        raise
+
     return {
         "message": "Consultation record created successfully",
         "consultation_id": new_consultation.id

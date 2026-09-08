@@ -111,3 +111,36 @@ def test_unknown_icd10_returns_business_error(authenticated_client):
 
     assert response.status_code == 400
     assert response.json()["error_code"] == "invalid_icd10_code"
+
+
+def test_create_consultation_rolls_back_patient_when_consultation_fails(
+    authenticated_client, db_session, monkeypatch
+):
+    from app.api.endpoints import consultation as consultation_ep
+
+    db_session.add(ICD10Code(code="R51.9", description="Headache"))
+    db_session.commit()
+
+    def fail_create_consultation(*args, **kwargs):
+        raise RuntimeError("Consultation insert failed unexpectedly")
+
+    monkeypatch.setattr(
+        consultation_ep.consultation_repo,
+        "create_consultation",
+        fail_create_consultation,
+    )
+
+    payload = {
+        "patient_name": "Jane Smith",
+        "dob": "1985-05-15",
+        "phone": "81234567",
+        "diagnosis_code": "R51.9",
+        "treatment_notes": "Prescribed rest and pain relief.",
+    }
+
+    with pytest.raises(RuntimeError):
+        authenticated_client.post("/api/consultation/", json=payload)
+
+    # Verify atomic rollback: patient record was NOT persisted
+    patient = db_session.query(Patient).filter_by(phone="81234567").first()
+    assert patient is None
