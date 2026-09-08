@@ -123,7 +123,7 @@ running and do not modify the application database at `clinic.db`.
 Latest test result:
 
 ```text
-47 passed
+66 passed
 Total coverage: 94%
 ```
 
@@ -140,6 +140,7 @@ app/repositories/consultation.py    100%
 app/repositories/diagnosis.py       100%
 app/repositories/patient.py          80%
 app/repositories/user.py            100%
+app/schemas/validators.py            94%
 app/api/dependencies.py              89%
 app/core/exceptions.py               76%
 app/core/security.py                100%

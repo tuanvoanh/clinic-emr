@@ -45,7 +45,15 @@ def test_query_and_path_constraints_return_validation_error(
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("phone", "123"), ("phone", "71234567"), ("dob", "invalid-date")],
+    [
+        ("phone", "123"),
+        ("phone", "71234567"),
+        ("dob", "invalid-date"),
+        ("dob", "1985-5-1"),
+        ("dob", "2025-02-29"),
+        ("dob", "2026-99-99"),
+        ("dob", "2099-01-01"),
+    ],
 )
 def test_consultation_body_validation_over_http(
     authenticated_client, field, value

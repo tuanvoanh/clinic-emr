@@ -48,14 +48,15 @@ code. Clarify whether "search by patient" means phone or name, implement the
 required patient-name/partial search if needed, and either implement or remove
 the unused `search_term` repository parameter.
 
-## 6. Validate real dates of birth
+## 6. Validate real dates of birth (Completed)
 
-**Priority:** Medium
+**Status:** Completed
 
-The consultation schema validates only the `YYYY-MM-DD` text pattern, while the
-patient schema has no equivalent constraint. Use a Pydantic `date` field or a
-validator to reject impossible and future dates, and add HTTP/schema tests for
-values such as `2025-02-29` and `2026-99-99`.
+Patient and consultation schemas now share a date-of-birth validator that
+enforces the strict `YYYY-MM-DD` format, rejects impossible dates, future dates,
+and dates before `1900-01-01`, while accepting valid leap-year dates. Schema and
+HTTP integration tests cover malformed, non-zero-padded, impossible, future,
+and unreasonably old values.
 
 ## 7. Show reliable frontend request errors
 

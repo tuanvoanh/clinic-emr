@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
+
+from app.schemas.validators import DOB_PATTERN, validate_date_of_birth
 
 class ConsultationCreate(BaseModel):
     """
@@ -8,11 +10,16 @@ class ConsultationCreate(BaseModel):
     Includes both patient information (creates a new one if not exists) and consultation details.
     """
     patient_name: str = Field(min_length=2, max_length=150, description="Full name of the patient.", json_schema_extra={"example": "Jane Smith"})
-    dob: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$", description="Date of birth of the patient (YYYY-MM-DD).", json_schema_extra={"example": "1985-05-15"})
+    dob: str = Field(pattern=DOB_PATTERN, description="Date of birth of the patient (YYYY-MM-DD).", json_schema_extra={"example": "1985-05-15"})
     phone: str = Field(pattern=r"^[89]\d{7}$", description="Patient's Singapore mobile phone number (8 digits, starts with 8 or 9). Unique identifier for patients.", json_schema_extra={"example": "81234567"})
     
     diagnosis_code: str = Field(min_length=1, max_length=20, description="ICD-10 diagnosis code.", json_schema_extra={"example": "R51.9"})
     treatment_notes: str = Field(min_length=5, description="Treatment notes, symptoms, and doctor's instructions.", json_schema_extra={"example": "Patient has a tension headache, prescribed mild pain relievers and rest."})
+
+    @field_validator("dob")
+    @classmethod
+    def validate_dob(cls, v: str) -> str:
+        return validate_date_of_birth(v)
 
 class ConsultationResponse(BaseModel):
     """
