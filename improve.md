@@ -58,22 +58,23 @@ and dates before `1900-01-01`, while accepting valid leap-year dates. Schema and
 HTTP integration tests cover malformed, non-zero-padded, impossible, future,
 and unreasonably old values.
 
-## 7. Show reliable frontend request errors
+## 7. Show reliable frontend request errors (Completed)
 
-**Priority:** Medium
+**Status:** Completed
 
-`frontend/pages/index.vue` logs list failures but leaves stale records visible.
-Add an explicit error and retry state, clear or clearly mark stale data, and do
-not display the database as "Live Synced" when the latest request failed.
+`frontend/pages/index.vue` now records request failures and clears stale list
+data. `ConsultationTable.vue` renders the error message with a retry action, and
+`ConsultationStats.vue` reports syncing, synced, or connection-error state
+instead of always displaying "Live Synced".
 
-## 8. Prevent stale autocomplete responses
+## 8. Prevent stale autocomplete responses (Completed)
 
-**Priority:** Medium
+**Status:** Completed
 
-Diagnosis and patient autocomplete requests can complete out of order. Cancel
-superseded requests with `AbortController` or ignore responses whose request ID
-does not match the latest query in `DiagnosisSelect.vue`,
-`ConsultationFilter.vue`, and `PatientDemographicsForm.vue`.
+`DiagnosisSelect.vue`, `ConsultationFilter.vue`, and
+`PatientDemographicsForm.vue` now cancel superseded requests with
+`AbortController`, pass the abort signal through `useApi`, ignore cancellation
+errors, and clean up timers and active requests when unmounted.
 
 ## 9. Improve frontend token storage and session validation
 

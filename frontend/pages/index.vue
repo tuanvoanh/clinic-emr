@@ -25,6 +25,7 @@
       :total="totalItems"
       :page="page"
       :total-pages="totalPages"
+      :sync-status="syncStatus"
     />
 
     <!-- Filter Component -->
@@ -44,7 +45,9 @@
       :page-size="pageSize"
       :total="totalItems"
       :total-pages="totalPages"
+      :error-message="errorMessage"
       @page-change="changePage"
+      @retry="fetchConsultations"
     />
   </div>
 </template>
@@ -63,6 +66,13 @@ const totalPages = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 const isLoading = ref(false);
+const errorMessage = ref<string | null>(null);
+
+const syncStatus = computed<'synced' | 'syncing' | 'error'>(() => {
+  if (errorMessage.value) return 'error';
+  if (isLoading.value) return 'syncing';
+  return 'synced';
+});
 
 const filters = reactive<IConsultationFilter>({
   phone: '',
@@ -73,6 +83,7 @@ const hasActiveFilters = computed(() => !!filters.phone.trim() || !!filters.diag
 
 const fetchConsultations = async () => {
   isLoading.value = true;
+  errorMessage.value = null;
   try {
     const query: Record<string, any> = {
       page: page.value,
@@ -90,8 +101,16 @@ const fetchConsultations = async () => {
     consultations.value = res.items || [];
     totalItems.value = res.total;
     totalPages.value = res.total_pages;
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to load consultations', err);
+    // Clear stale records so stale data is not mistaken for active query results
+    consultations.value = [];
+    totalItems.value = 0;
+    totalPages.value = 0;
+    errorMessage.value =
+      err?.data?.message ||
+      err?.message ||
+      'Unable to connect to the clinical database. Please check your network connection or try again.';
   } finally {
     isLoading.value = false;
   }

@@ -28,16 +28,50 @@
 
     <!-- Status -->
     <div class="bg-white p-5 rounded-2xl border border-slate-200/70 shadow-xs flex items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div
+        :class="[
+          'w-12 h-12 rounded-xl border flex items-center justify-center transition-colors',
+          syncStatus === 'error'
+            ? 'bg-rose-50 border-rose-100 text-rose-600'
+            : syncStatus === 'syncing'
+            ? 'bg-sky-50 border-sky-100 text-sky-600'
+            : 'bg-emerald-50 border-emerald-100 text-emerald-600',
+        ]"
+      >
+        <svg v-if="syncStatus === 'error'" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <svg v-else-if="syncStatus === 'syncing'" class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <svg v-else class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </div>
       <div>
         <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Database Status</p>
-        <p class="text-sm font-bold text-emerald-600 flex items-center gap-1.5 mt-1">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          Live Synced
+        <p
+          :class="[
+            'text-sm font-bold flex items-center gap-1.5 mt-1 transition-colors',
+            syncStatus === 'error'
+              ? 'text-rose-600'
+              : syncStatus === 'syncing'
+              ? 'text-sky-600'
+              : 'text-emerald-600',
+          ]"
+        >
+          <span
+            :class="[
+              'w-2 h-2 rounded-full',
+              syncStatus === 'error'
+                ? 'bg-rose-500'
+                : syncStatus === 'syncing'
+                ? 'bg-sky-500 animate-ping'
+                : 'bg-emerald-500 animate-pulse',
+            ]"
+          ></span>
+          {{ syncStatus === 'error' ? 'Connection Error' : syncStatus === 'syncing' ? 'Syncing...' : 'Live Synced' }}
         </p>
       </div>
     </div>
@@ -45,9 +79,15 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  total: number;
-  page: number;
-  totalPages: number;
-}>();
+withDefaults(
+  defineProps<{
+    total: number;
+    page: number;
+    totalPages: number;
+    syncStatus?: 'synced' | 'syncing' | 'error';
+  }>(),
+  {
+    syncStatus: 'synced',
+  }
+);
 </script>

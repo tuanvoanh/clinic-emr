@@ -141,16 +141,24 @@ const showPatientDropdown = ref(false);
 const autoFilledPatient = ref(false);
 
 let patientSearchTimer: ReturnType<typeof setTimeout> | null = null;
+let patientAbortController: AbortController | null = null;
+
+onUnmounted(() => {
+  if (patientSearchTimer) clearTimeout(patientSearchTimer);
+  if (patientAbortController) patientAbortController.abort();
+});
 
 const onPhoneInput = (val: string) => {
   emit('update:phone', val);
   const trimmed = val.trim();
 
+  // If user edits phone, reset the auto-filled indicator
   if (autoFilledPatient.value) {
     autoFilledPatient.value = false;
   }
 
   if (patientSearchTimer) clearTimeout(patientSearchTimer);
+  if (patientAbortController) patientAbortController.abort();
 
   if (!trimmed || !/^[89]\d*$/.test(trimmed)) {
     patientSuggestions.value = [];
@@ -160,18 +168,29 @@ const onPhoneInput = (val: string) => {
 
   isSearchingPatients.value = true;
   patientSearchTimer = setTimeout(async () => {
+    const currentController = new AbortController();
+    patientAbortController = currentController;
     try {
-      const res = await api.get<Patient[]>('/api/patient/', {
-        phone: trimmed,
-        limit: 8,
-      });
+      const res = await api.get<Patient[]>(
+        '/api/patient/',
+        {
+          phone: trimmed,
+          limit: 8,
+        },
+        { signal: currentController.signal }
+      );
       patientSuggestions.value = res || [];
       showPatientDropdown.value = (res && res.length > 0);
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        return;
+      }
       console.error('Patient search error:', err);
       patientSuggestions.value = [];
     } finally {
-      isSearchingPatients.value = false;
+      if (patientAbortController === currentController) {
+        isSearchingPatients.value = false;
+      }
     }
   }, 250);
 };

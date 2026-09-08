@@ -101,22 +101,41 @@ const isOpen = ref(false);
 const isLoading = ref(false);
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+let abortController: AbortController | null = null;
 
 const fetchDiagnoses = async (term: string) => {
+  if (abortController) {
+    abortController.abort();
+  }
+  const currentController = new AbortController();
+  abortController = currentController;
+
   isLoading.value = true;
   try {
-    const res = await api.get<DiagnosisCode[]>('/api/diagnosis/', {
-      search: term.trim(),
-    });
+    const res = await api.get<DiagnosisCode[]>(
+      '/api/diagnosis/',
+      { search: term.trim() },
+      { signal: currentController.signal }
+    );
     results.value = res || [];
     isOpen.value = true;
-  } catch (err) {
+  } catch (err: any) {
+    if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+      return; // Ignore aborted requests
+    }
     console.error('Diagnosis search error:', err);
     results.value = [];
   } finally {
-    isLoading.value = false;
+    if (abortController === currentController) {
+      isLoading.value = false;
+    }
   }
 };
+
+onUnmounted(() => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  if (abortController) abortController.abort();
+});
 
 const onInput = (val: string) => {
   query.value = val;

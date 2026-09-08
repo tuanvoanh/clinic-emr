@@ -42,13 +42,13 @@ export const useApi = () => {
 
   return {
     request,
-    get: <T>(endpoint: string, query?: Record<string, any>) =>
-      request<T>(endpoint, { method: 'GET', query }),
-    post: <T>(endpoint: string, body?: any, headers?: Record<string, string>) =>
-      request<T>(endpoint, { method: 'POST', body, headers }),
-    put: <T>(endpoint: string, body?: any) =>
-      request<T>(endpoint, { method: 'PUT', body }),
-    delete: <T>(endpoint: string) =>
-      request<T>(endpoint, { method: 'DELETE' }),
+    get: <T>(endpoint: string, query?: Record<string, any>, options?: Parameters<typeof $fetch>[1]) =>
+      request<T>(endpoint, { method: 'GET', query, ...options }),
+    post: <T>(endpoint: string, body?: any, headers?: Record<string, string>, options?: Parameters<typeof $fetch>[1]) =>
+      request<T>(endpoint, { method: 'POST', body, headers, ...options }),
+    put: <T>(endpoint: string, body?: any, options?: Parameters<typeof $fetch>[1]) =>
+      request<T>(endpoint, { method: 'PUT', body, ...options }),
+    delete: <T>(endpoint: string, options?: Parameters<typeof $fetch>[1]) =>
+      request<T>(endpoint, { method: 'DELETE', ...options }),
   };
 };

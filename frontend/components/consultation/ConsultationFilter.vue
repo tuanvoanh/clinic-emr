@@ -188,6 +188,15 @@ const hasActiveFilters = computed(() => !!props.phone.trim() || !!props.diagnosi
 
 let patientSearchTimer: ReturnType<typeof setTimeout> | null = null;
 let diagnosisSearchTimer: ReturnType<typeof setTimeout> | null = null;
+let patientAbortController: AbortController | null = null;
+let diagnosisAbortController: AbortController | null = null;
+
+onUnmounted(() => {
+  if (patientSearchTimer) clearTimeout(patientSearchTimer);
+  if (diagnosisSearchTimer) clearTimeout(diagnosisSearchTimer);
+  if (patientAbortController) patientAbortController.abort();
+  if (diagnosisAbortController) diagnosisAbortController.abort();
+});
 
 const onPhoneInput = (val: string) => {
   emit('update:phone', val);
@@ -195,6 +204,7 @@ const onPhoneInput = (val: string) => {
   const trimmed = val.trim();
 
   if (patientSearchTimer) clearTimeout(patientSearchTimer);
+  if (patientAbortController) patientAbortController.abort();
 
   if (!trimmed || !/^[89]\d*$/.test(trimmed)) {
     patientSuggestions.value = [];
@@ -204,18 +214,29 @@ const onPhoneInput = (val: string) => {
 
   isSearchingPatients.value = true;
   patientSearchTimer = setTimeout(async () => {
+    const currentController = new AbortController();
+    patientAbortController = currentController;
     try {
-      const res = await api.get<Patient[]>('/api/patient/', {
-        phone: trimmed,
-        limit: 10,
-      });
+      const res = await api.get<Patient[]>(
+        '/api/patient/',
+        {
+          phone: trimmed,
+          limit: 10,
+        },
+        { signal: currentController.signal }
+      );
       patientSuggestions.value = res || [];
       showPatientDropdown.value = (res && res.length > 0);
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        return;
+      }
       console.error('Patient search error:', err);
       patientSuggestions.value = [];
     } finally {
-      isSearchingPatients.value = false;
+      if (patientAbortController === currentController) {
+        isSearchingPatients.value = false;
+      }
     }
   }, 250);
 };
@@ -233,6 +254,7 @@ const onDiagnosisInput = (val: string) => {
   const trimmed = val.trim();
 
   if (diagnosisSearchTimer) clearTimeout(diagnosisSearchTimer);
+  if (diagnosisAbortController) diagnosisAbortController.abort();
 
   if (!trimmed) {
     diagnosisSuggestions.value = [];
@@ -242,17 +264,28 @@ const onDiagnosisInput = (val: string) => {
 
   isSearchingDiagnoses.value = true;
   diagnosisSearchTimer = setTimeout(async () => {
+    const currentController = new AbortController();
+    diagnosisAbortController = currentController;
     try {
-      const res = await api.get<DiagnosisCode[]>('/api/diagnosis/', {
-        search: trimmed,
-      });
+      const res = await api.get<DiagnosisCode[]>(
+        '/api/diagnosis/',
+        {
+          search: trimmed,
+        },
+        { signal: currentController.signal }
+      );
       diagnosisSuggestions.value = res || [];
       showDiagnosisDropdown.value = (res && res.length > 0);
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        return;
+      }
       console.error('Diagnosis search error:', err);
       diagnosisSuggestions.value = [];
     } finally {
-      isSearchingDiagnoses.value = false;
+      if (diagnosisAbortController === currentController) {
+        isSearchingDiagnoses.value = false;
+      }
     }
   }, 250);
 };
