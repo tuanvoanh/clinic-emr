@@ -110,7 +110,7 @@ running and do not modify the application database at `clinic.db`.
 Latest test result:
 
 ```text
-45 passed
+47 passed
 Total coverage: 94%
 ```
 
@@ -119,12 +119,15 @@ Key coverage results:
 ```text
 app/main.py                          100%
 app/api/api_router.py               100%
-app/api/endpoints/*                 100%
+app/api/endpoints/auth.py           100%
+app/api/endpoints/consultation.py    91%
+app/api/endpoints/diagnosis.py      100%
+app/api/endpoints/patient.py        100%
 app/repositories/consultation.py    100%
 app/repositories/diagnosis.py       100%
-app/repositories/patient.py          78%
+app/repositories/patient.py          80%
 app/repositories/user.py            100%
 app/api/dependencies.py              89%
-app/core/exceptions.py               74%
+app/core/exceptions.py               76%
 app/core/security.py                100%
 ```

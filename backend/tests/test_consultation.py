@@ -78,6 +78,48 @@ def test_create_consultation_creates_missing_patient(monkeypatch, consultation_i
     assert patient_in.phone == consultation_in.phone
 
 
+def test_create_consultation_recovers_from_integrity_error(monkeypatch, consultation_in):
+    from sqlalchemy.exc import IntegrityError
+
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = SimpleNamespace(
+        code="R51.9"
+    )
+
+    # Initial check returns None (patient not found)
+    # After IntegrityError rollback, second get_patient_by_phone returns the concurrently created patient
+    concurrent_patient = SimpleNamespace(id=99)
+    monkeypatch.setattr(
+        consultation.patient_repo,
+        "get_patient_by_phone",
+        MagicMock(side_effect=[None, concurrent_patient]),
+    )
+    # First create_patient simulates race condition: concurrent insert happened, raising IntegrityError
+    orig_exc = Exception("UNIQUE constraint failed: patients.phone")
+    monkeypatch.setattr(
+        consultation.patient_repo,
+        "create_patient",
+        MagicMock(side_effect=IntegrityError("statement", {}, orig_exc)),
+    )
+    create_consultation = MagicMock(return_value=SimpleNamespace(id=88))
+    monkeypatch.setattr(
+        consultation.consultation_repo,
+        "create_consultation",
+        create_consultation,
+    )
+
+    result = consultation.create_consultation(consultation_in=consultation_in, db=db)
+
+    assert result == {
+        "message": "Consultation record created successfully",
+        "consultation_id": 88,
+    }
+    db.rollback.assert_called_once()
+    create_consultation.assert_called_once_with(
+        db, patient=concurrent_patient, consultation_in=consultation_in, commit=True
+    )
+
+
 def test_create_consultation_rejects_unknown_icd10_code(consultation_in):
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = None

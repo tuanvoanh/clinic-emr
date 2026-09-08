@@ -60,7 +60,6 @@ def create_consultation(
             commit=False
         )
         db.commit()
-        db.refresh(new_consultation)
     except IntegrityError:
         db.rollback()
         # Handle race condition: patient was concurrently created by another request
