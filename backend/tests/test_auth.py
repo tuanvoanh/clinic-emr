@@ -71,3 +71,14 @@ def test_setup_first_user_rejects_repeated_setup():
 
     assert exc_info.value.error_code == ErrorCode.VALIDATION_ERROR.code
     assert exc_info.value.status_code == 400
+
+
+def test_setup_first_user_rejects_when_disabled(monkeypatch):
+    monkeypatch.setattr(auth.settings, "ALLOW_SETUP_ENDPOINT", False)
+
+    with pytest.raises(AppException) as exc_info:
+        auth.setup_first_user(db=MagicMock())
+
+    assert exc_info.value.error_code == ErrorCode.FORBIDDEN.code
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.message == "Public setup endpoint is disabled."

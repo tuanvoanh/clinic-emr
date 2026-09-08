@@ -42,7 +42,20 @@ Install the required Python packages.
 pip install -r requirements.txt
 ```
 
-### 3. Database Setup & Migrations
+### 3. Configure Environment Variables (.env)
+The application requires explicit security credentials and configuration. Copy the provided `.env.example` to `.env` and customize the variables before proceeding:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and configure:
+- `SECRET_KEY`: Set a cryptographically secure random key (e.g. generate via `openssl rand -hex 32`). **Fallback default values are strictly disabled for security.**
+- `FIRST_SUPERUSER_EMAIL` & `FIRST_SUPERUSER_PASSWORD`: Credentials for the initial administrator.
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: Token lifetime (defaults to 60 minutes for hardened security).
+- `ALLOW_SETUP_ENDPOINT`: Set to `false` after initial deployment to disable the public `/api/auth/setup` route.
+
+### 4. Database Setup & Migrations
 We use Alembic to handle database migrations. Run the following command to apply the latest database schema (this will create `clinic.db`):
 ```bash
 alembic upgrade head
@@ -65,13 +78,13 @@ Whenever you modify, add, or delete SQLAlchemy models in the `app/models/` direc
 
 > **Note:** SQLite's autogenerate functionality might sometimes misinterpret a column rename as a "drop and add" operation. It is best practice to briefly review the generated migration file in `alembic/versions/` before running `upgrade head`.
 
-### 4. Seed Initial Data
+### 5. Seed Initial Data
 The system requires standard ICD-10 codes. Run the seed script to populate the database with a sample set of 100 diagnosis codes:
 ```bash
 python -m app.db.seed_icd10
 ```
 
-### 5. Run the Server
+### 6. Run the Server
 Start the FastAPI application using Uvicorn.
 ```bash
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000

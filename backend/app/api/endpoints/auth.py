@@ -47,8 +47,15 @@ def login_access_token(
 @router.post("/setup", response_model=UserResponse)
 def setup_first_user(db: Session = Depends(get_db)):
     """
-    Setup the first superuser. If a user already exists, this endpoint fails.
+    Setup the first superuser. If a user already exists or setup is disabled, this endpoint fails.
     """
+    if not settings.ALLOW_SETUP_ENDPOINT:
+        raise AppException(
+            error_code=ErrorCode.FORBIDDEN,
+            status_code=403,
+            message="Public setup endpoint is disabled."
+        )
+
     from app.models.user import User
     user = db.query(User).first()
     if user:

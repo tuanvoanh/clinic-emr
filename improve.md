@@ -29,14 +29,15 @@ The endpoint rolls back failures, retries after a concurrent unique-phone
 conflict by loading the existing patient, and the integration test verifies that
 a failed consultation insert does not leave a patient record behind.
 
-## 4. Harden default JWT configuration
+## 4. Harden default JWT configuration (Completed)
 
-**Priority:** High
+**Status:** Completed
 
-`backend/app/core/config.py` contains predictable fallback credentials and a
-development signing key. Require secure environment values outside demo mode,
-shorten the token lifetime, and restrict or remove the public setup endpoint
-after initial provisioning.
+`SECRET_KEY`, `FIRST_SUPERUSER_EMAIL`, and `FIRST_SUPERUSER_PASSWORD` are now
+mandatory environment settings with no application fallback. The default token
+lifetime is 60 minutes, and `ALLOW_SETUP_ENDPOINT` can disable the public setup
+route after provisioning. The documented credentials remaining in
+`docker-compose.demo.yaml` are explicitly scoped to the local demo stack.
 
 ## 5. Complete consultation search behavior
 

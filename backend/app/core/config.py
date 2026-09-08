@@ -12,15 +12,18 @@ class Settings(BaseSettings):
     # URL for local SQLite database connection
     DATABASE_URL: str = "sqlite:///./clinic.db"
 
-    # JWT Settings
-    SECRET_KEY: str = "super-secret-key-for-development" # Change in production
+    # JWT Settings (SECRET_KEY is mandatory from environment)
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8 # 8 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # Shortened token lifetime (60 minutes)
 
-    # Initial Superuser Settings
-    FIRST_SUPERUSER_EMAIL: str = "admin@clinic.com"
-    FIRST_SUPERUSER_PASSWORD: str = "adminpassword"
-    FIRST_SUPERUSER_FULL_NAME: str = "Admin Setup"
+    # Initial Superuser Settings (Mandatory from environment)
+    FIRST_SUPERUSER_EMAIL: str
+    FIRST_SUPERUSER_PASSWORD: str
+    FIRST_SUPERUSER_FULL_NAME: str = "Clinic Administrator"
+
+    # Security toggle to disable public /setup route after initial provisioning
+    ALLOW_SETUP_ENDPOINT: bool = True
 
     model_config = {
         "env_file": ".env",
