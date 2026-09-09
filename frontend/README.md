@@ -18,7 +18,7 @@ Production-ready, client-side rendered Nuxt 3 frontend application for Clinic EM
 3. **Doctor Authentication** (`/login`)
    - JWT authentication integrated with `/api/auth/login/access-token`.
    - Global client-side route guard (`middleware/auth.global.ts`).
-   - Token persistence in secure cookies.
+   - Token persistence in localStorage (SPA client-side auth).
 
 4. **Production Architecture**
    - **Zero Hardcoded URLs**: Configured via `runtimeConfig` and `NUXT_PUBLIC_API_BASE_URL` in `.env`.

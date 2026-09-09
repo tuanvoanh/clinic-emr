@@ -11,7 +11,7 @@ from app.core.exceptions import AppException, ErrorCode
 
 def test_get_current_user_prefers_bearer_token(monkeypatch):
     db = MagicMock()
-    user = SimpleNamespace(id=12)
+    user = SimpleNamespace(id=12, is_active=True)
     decode = MagicMock(return_value={"sub": "12"})
     get_user = MagicMock(return_value=user)
     monkeypatch.setattr(dependencies.jwt, "decode", decode)
@@ -66,5 +66,38 @@ def test_get_current_user_rejects_unknown_user(monkeypatch):
             db=MagicMock(), oauth_token="valid-token", bearer_token=None
         )
 
-    assert exc_info.value.error_code == ErrorCode.USER_NOT_FOUND.code
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.error_code == ErrorCode.UNAUTHORIZED.code
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.message == "Could not validate credentials"
+
+
+def test_get_current_user_rejects_non_numeric_sub(monkeypatch):
+    monkeypatch.setattr(
+        dependencies.jwt, "decode", MagicMock(return_value={"sub": "not-a-number"})
+    )
+
+    with pytest.raises(AppException) as exc_info:
+        dependencies.get_current_user(
+            db=MagicMock(), oauth_token="valid-token", bearer_token=None
+        )
+
+    assert exc_info.value.error_code == ErrorCode.UNAUTHORIZED.code
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.message == "Could not validate credentials"
+
+
+def test_get_current_user_rejects_inactive_user(monkeypatch):
+    inactive_user = SimpleNamespace(id=5, is_active=False)
+    monkeypatch.setattr(
+        dependencies.jwt, "decode", MagicMock(return_value={"sub": "5"})
+    )
+    monkeypatch.setattr(dependencies.user_repo, "get", MagicMock(return_value=inactive_user))
+
+    with pytest.raises(AppException) as exc_info:
+        dependencies.get_current_user(
+            db=MagicMock(), oauth_token="valid-token", bearer_token=None
+        )
+
+    assert exc_info.value.error_code == ErrorCode.UNAUTHORIZED.code
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.message == "Could not validate credentials"

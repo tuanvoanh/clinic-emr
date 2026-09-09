@@ -24,6 +24,68 @@ def test_protected_endpoint_returns_structured_unauthorized_response(client):
     }
 
 
+def test_protected_endpoint_rejects_malformed_and_invalid_tokens(client, db_session):
+    from datetime import datetime, timedelta, timezone
+    from jose import jwt
+    from app.core.config import settings
+    from app.models.user import User
+
+    # 1. Malformed token string
+    res = client.get("/api/diagnosis/", headers={"Authorization": "Bearer not-a-valid-jwt"})
+    assert res.status_code == 401
+    assert res.json()["error_code"] == "unauthorized"
+
+    # 2. Expired token
+    expired_payload = {
+        "sub": "1",
+        "exp": datetime.now(timezone.utc) - timedelta(minutes=10),
+    }
+    expired_token = jwt.encode(expired_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    res = client.get("/api/diagnosis/", headers={"Authorization": f"Bearer {expired_token}"})
+    assert res.status_code == 401
+    assert res.json()["error_code"] == "unauthorized"
+
+    # 3. Non-numeric sub (e.g. string "doctor")
+    non_numeric_payload = {
+        "sub": "doctor_non_numeric",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+    }
+    non_numeric_token = jwt.encode(non_numeric_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    res = client.get("/api/diagnosis/", headers={"Authorization": f"Bearer {non_numeric_token}"})
+    assert res.status_code == 401
+    assert res.json()["error_code"] == "unauthorized"
+
+    # 4. Unknown/deleted user (ID 999999 does not exist)
+    unknown_user_payload = {
+        "sub": "999999",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+    }
+    unknown_user_token = jwt.encode(unknown_user_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    res = client.get("/api/diagnosis/", headers={"Authorization": f"Bearer {unknown_user_token}"})
+    assert res.status_code == 401
+    assert res.json()["error_code"] == "unauthorized"
+
+    # 5. Inactive user in database
+    inactive_user = User(
+        email="inactive@clinic.com",
+        hashed_password="fake",
+        full_name="Inactive Doctor",
+        is_active=False,
+    )
+    db_session.add(inactive_user)
+    db_session.commit()
+    db_session.refresh(inactive_user)
+
+    inactive_payload = {
+        "sub": str(inactive_user.id),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+    }
+    inactive_token = jwt.encode(inactive_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    res = client.get("/api/diagnosis/", headers={"Authorization": f"Bearer {inactive_token}"})
+    assert res.status_code == 401
+    assert res.json()["error_code"] == "unauthorized"
+
+
 @pytest.mark.parametrize(
     ("url", "field"),
     [

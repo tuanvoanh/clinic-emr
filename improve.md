@@ -93,3 +93,66 @@ The task examples use `/diagnosis` and `/consultation`, while this application
 exposes `/api/diagnosis/` and `/api/consultation/`. Document the API prefix
 clearly and consider compatibility routes only if the evaluator requires the
 sample paths exactly.
+
+## 11. Make Alembic use the runtime database URL
+
+**Priority:** High
+
+`backend/alembic/env.py` currently uses the URL from `alembic.ini` instead of
+`settings.DATABASE_URL`. In Docker, migrations therefore target
+`/app/clinic.db` while the application uses the persisted `/data/clinic.db`.
+Configure Alembic from the runtime settings and remove the schema-creating
+fallback from `seed_demo.py` so fresh-start and upgrade behavior are both
+covered by migrations.
+
+## 12. Prevent stale patient demographics after phone edits
+
+**Priority:** High
+
+`PatientDemographicsForm.vue` clears the matched-patient state when the phone is
+edited but leaves the selected patient's name and date of birth in the form.
+Clear the dependent fields or require a successful rematch before submission to
+avoid creating a new patient with another patient's demographics.
+
+## 13. Bundle frontend styling locally
+
+**Priority:** High
+
+The production frontend loads Tailwind from a third-party CDN. Bundle Tailwind
+as part of the Nuxt build so the demo remains styled in offline or
+network-restricted evaluation environments and does not execute third-party
+JavaScript alongside a browser-readable authentication token.
+
+## 14. Harden authenticated-user validation
+
+**Priority:** Medium
+
+`get_current_user` should reject inactive users and handle a non-numeric JWT
+`sub` as an authentication failure rather than allowing `int()` to raise a 500
+response. Deleted, inactive, malformed, and expired token cases should return a
+consistent 401 response and be covered by HTTP tests.
+
+## 15. Enforce SQLite foreign keys
+
+**Priority:** Medium
+
+Register a SQLAlchemy connection hook that executes
+`PRAGMA foreign_keys=ON` for every SQLite connection. Add a test proving that
+consultations cannot reference missing patients or ICD-10 codes.
+
+## 16. Stabilize consultation pagination ordering
+
+**Priority:** Medium
+
+Consultations are currently ordered only by `created_at`. Add `id DESC` as a
+secondary ordering key so records with identical timestamps do not move between
+pages or appear more than once while paginating.
+
+## 17. Complete submission quality automation
+
+**Priority:** Low
+
+Migrate the remaining Pydantic class-based `Config` declarations to
+`ConfigDict`, pin backend dependency versions for reproducible builds, and add
+frontend lint, type-check, unit-test, and end-to-end-test scripts for auth,
+autocomplete, filtering, and patient identity flows.

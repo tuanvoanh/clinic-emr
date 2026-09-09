@@ -6,7 +6,7 @@ export interface ApiError {
 
 export const useApi = () => {
   const config = useRuntimeConfig();
-  const token = useCookie<string | null>('clinic_auth_token');
+  const { token, logout } = useAuth();
   const baseURL = config.public.apiBaseUrl;
 
   const request = async <T>(
@@ -30,11 +30,7 @@ export const useApi = () => {
     } catch (err: any) {
       // Handle 401 Unauthorized globally
       if (err.statusCode === 401 || err.status === 401) {
-        token.value = null;
-        if (process.client) {
-          const router = useRouter();
-          router.push('/login');
-        }
+        logout();
       }
       throw err;
     }

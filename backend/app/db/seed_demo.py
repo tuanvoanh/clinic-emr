@@ -1,17 +1,14 @@
 from app.core.config import settings
-from app.core.database import SessionLocal, engine
+from app.core.database import SessionLocal
 from app.db.seed_consultations import seed_consultations
 from app.db.seed_icd10 import seed_icd10_codes
 from app.db.seed_patients import seed_patients
-from app.models import Base
 from app.repositories.user import user_repo
 from app.schemas.user import UserCreate
 
 
 def seed_demo() -> None:
     """Prepare a complete, idempotent dataset for the Docker demo."""
-    Base.metadata.create_all(bind=engine)
-
     db = SessionLocal()
     try:
         if not user_repo.get_by_email(db, settings.FIRST_SUPERUSER_EMAIL):

@@ -52,17 +52,19 @@ def get_current_user(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         token_data = TokenPayload(**payload)
-    except (JWTError, ValidationError):
+        user_id = int(token_data.sub)
+    except (JWTError, ValidationError, ValueError, TypeError):
         raise AppException(
             error_code=ErrorCode.UNAUTHORIZED,
             status_code=401,
             message="Could not validate credentials"
         )
-    user = user_repo.get(db, user_id=int(token_data.sub))
-    if not user:
+
+    user = user_repo.get(db, user_id=user_id)
+    if not user or not user.is_active:
         raise AppException(
-            error_code=ErrorCode.USER_NOT_FOUND,
-            status_code=404,
-            message="User not found"
+            error_code=ErrorCode.UNAUTHORIZED,
+            status_code=401,
+            message="Could not validate credentials"
         )
     return user
